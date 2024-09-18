@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAA Locator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Find Nearest Specialized Adoption Agencies (SAAs)</h1>
+    <div id="loading-indicator">Loading data, please wait...</div>
+    <form id="search-form" onsubmit="return false;">
+        <input type="text" id="pincode" placeholder="Enter your Pin Code">
+        <button type="button" id="search-button">Search</button>
+    </form>
+    <div id="results"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
