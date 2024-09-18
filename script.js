@@ -102,8 +102,9 @@ function findSAA() {
     const pinCode = pincodeInput.value.trim();
     console.log('Entered pin code:', pinCode);
 
-    if (!pinCode) {
-        alert('Please enter a pin code.');
+    // Check for valid PIN code format
+    if (!/^\d{6}$/.test(pinCode)) {
+        alert('Invalid PIN code. Please enter a 6-digit numeric PIN code.');
         return;
     }
 
@@ -112,41 +113,56 @@ function findSAA() {
     console.log('Pincode info:', pincodeInfo);
 
     if (pincodeInfo) {
+        // Existing logic for found pincode
         const district = pincodeInfo['District'];
         const state = pincodeInfo['State'];
         console.log('District:', district, 'State:', state);
-
-        // Find SAAs in the same district and state
-        const matchingSAAs = saaData.filter(item => {
-            if (!item || typeof item !== 'object') return false;
-            const itemDistrict = item['District'];
-            const itemState = item['State'];
-            return itemDistrict && itemState &&
-                   itemDistrict.toLowerCase() === district.toLowerCase() &&
-                   itemState.toLowerCase() === state.toLowerCase();
-        });
-        console.log('Matching SAAs found:', matchingSAAs.length);
-        if (matchingSAAs.length > 0) {
-            displayResults(matchingSAAs);
-        } else {
-            console.log('No exact matches, searching in same state');
-            const sameStateSAAs = saaData.filter(item => {
-                if (!item || typeof item !== 'object') return false;
-                const itemState = item['State'];
-                return itemState && itemState.toLowerCase() === state.toLowerCase();
-            });
-            console.log('Same state SAAs found:', sameStateSAAs.length);
-            if (sameStateSAAs.length > 0) {
-                displayResults(sameStateSAAs);
-            } else {
-                console.log('No SAAs in state, displaying all SAAs');
-                document.getElementById('results').innerHTML = '<p>No SAAs found in your state. Here are all available SAAs:</p>';
-                displayResults(saaData);
-            }
-        }
+        findMatchingSAAs(district, state);
     } else {
-        console.log('Invalid pin code or no information available');
-        document.getElementById('results').innerHTML = '<p>Invalid Pin Code or no information available for this pin code.</p>';
+        // Fallback: Check for the first three digits
+        const prefix = pinCode.slice(0, 3);
+        const matchingPincodes = pincodeData.filter(item => item['Pin Code'].startsWith(prefix));
+        
+        if (matchingPincodes.length > 0) {
+            const district = matchingPincodes[0]['District'];
+            const state = matchingPincodes[0]['State'];
+            console.log('Fallback District:', district, 'State:', state);
+            findMatchingSAAs(district, state);
+        } else {
+            // No matching pincode found
+            document.getElementById('results').innerHTML = '<p>Invalid PIN code or no information available for this PIN code.</p>';
+        }
+    }
+}
+
+function findMatchingSAAs(district, state) {
+    console.log('Finding matching SAAs for:', district, state);
+    
+    // Check if district and state are defined
+    if (!district || !state) {
+        console.log('District or state is undefined');
+        document.getElementById('results').innerHTML = '<p>No SAAs found for the provided district and state.</p>';
+        return;
+    }
+
+    const matchingSAAs = saaData.filter(item => {
+        return item['District'] && item['State'] &&
+               item['District'].toLowerCase() === district.toLowerCase() &&
+               item['State'].toLowerCase() === state.toLowerCase();
+    });
+
+    if (matchingSAAs.length > 0) {
+        displayResults(matchingSAAs);
+    } else {
+        // If no exact matches, search in the same state
+        const sameStateSAAs = saaData.filter(item => 
+            item['State'] && item['State'].toLowerCase() === state.toLowerCase()
+        );
+        if (sameStateSAAs.length > 0) {
+            displayResults(sameStateSAAs);
+        } else {
+            document.getElementById('results').innerHTML = '<p>No SAAs found in your state.</p>';
+        }
     }
 }
 
@@ -171,8 +187,8 @@ function displayResults(saas) {
                     <p><strong>Phone:</strong> ${saa['Phone No.'] || 'N/A'}</p>
                     <p><strong>Email:</strong> ${saa['Email'] || 'N/A'}</p>
                     <p><strong>Address:</strong> ${saa['Address'] || 'N/A'}</p>
-                    <div id="map-${index}" style="height: 300px; width: 100%;"></div>
-                    <p><a href="#" onclick="openDirections(${index}); return false;">Get Directions</a></p>
+                    <div class="map-container" id="map-${index}"></div>
+                    <a href="#" class="directions-btn" onclick="openDirections(${index}); return false;">Get Directions</a>
                 </div>
             `;
         });
@@ -203,16 +219,18 @@ function displayResults(saas) {
 function openDirections(index) {
     const saa = globalSAAs[index];
     let destination;
-    if (saa.lat && saa.lon) {
-        // Use coordinates if available
+
+    if (saa['Verified Address']) {
+        destination = saa['Verified Address'];
+    } else if (saa['Address'] && saa['District'] && saa['State']) {
+        destination = `${saa['Address']}, ${saa['District']}, ${saa['State']}`;
+    } else if (saa.lat && saa.lon) {
         destination = `${saa.lat},${saa.lon}`;
     } else {
-        // Fallback to a simplified address
-        destination = `${saa['District'] || ''}, ${saa['State'] || ''}`;
+        destination = `${saa['Address'] || ''}, ${saa['District'] || ''}, ${saa['State'] || ''}`;
     }
     
-    const encodedDestination = encodeURIComponent(destination);
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
     window.open(url, '_blank');
 }
 
@@ -230,25 +248,26 @@ function geocodeAddress(address, map, saa) {
                     .bindPopup(address)
                     .openPopup();
                 
-                // Store the coordinates
+                // Store more detailed information
                 saa.lat = lat;
                 saa.lon = lon;
+                saa.displayName = data[0].display_name;
             } else {
                 console.log('Geocoding failed for address:', address);
                 // Fallback: Try geocoding with just district and state
                 const fallbackAddress = `${saa['District'] || ''}, ${saa['State'] || ''}`;
-                geocodeFallback(fallbackAddress, map);
+                geocodeFallback(fallbackAddress, map, saa);
             }
         })
         .catch(error => {
             console.error('Error during geocoding:', error);
             // Fallback: Try geocoding with just district and state
             const fallbackAddress = `${saa['District'] || ''}, ${saa['State'] || ''}`;
-            geocodeFallback(fallbackAddress, map);
+            geocodeFallback(fallbackAddress, map, saa);
         });
 }
 
-function geocodeFallback(address, map) {
+function geocodeFallback(address, map, saa) {
     console.log('Attempting fallback geocoding for:', address);
     fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
         .then(response => response.json())
@@ -261,6 +280,11 @@ function geocodeFallback(address, map) {
                 L.marker([lat, lon]).addTo(map)
                     .bindPopup(address)
                     .openPopup();
+                
+                // Store more detailed information
+                saa.lat = lat;
+                saa.lon = lon;
+                saa.displayName = data[0].display_name;
             } else {
                 console.log('Fallback geocoding failed for address:', address);
                 // If all else fails, show the entire state
@@ -302,3 +326,15 @@ function initializeMaps(saas) {
         console.error('Leaflet library not loaded');
     }
 }
+
+function preprocessAddress(saa) {
+    // Add manual corrections for known problematic addresses
+    if (saa['District'] === 'Nanded' && saa['State'] === 'MAHARASHTRA') {
+        saa['Address'] = 'Chikala Tanda, Maharashtra 431806';
+    }
+    // Add more corrections as needed
+    return saa;
+}
+
+// Use this function when processing your data
+saaData = saaData.map(preprocessAddress);
