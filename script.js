@@ -16,10 +16,16 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Search button not found');
     }
 
-    // Check if pincode input exists
+    // Add event listener for 'Enter' key on pincode input
     const pincodeInput = document.getElementById('pincode');
     if (pincodeInput) {
-        console.log('Pincode input found');
+        pincodeInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Prevent form submission
+                findSAA();
+            }
+        });
+        console.log('Pincode input initialized');
     } else {
         console.error('Pincode input not found');
     }
@@ -185,7 +191,7 @@ function displayResults(saas) {
                     <h3>${saa['District'] || 'N/A'}, ${saa['State'] || 'N/A'}</h3>
                     <p><strong>Contact Person:</strong> ${saa['Contact Person'] || 'N/A'}</p>
                     <p><strong>Phone:</strong> ${saa['Phone No.'] || 'N/A'}</p>
-                    <p><strong>Email:</strong> ${saa['Email'] || 'N/A'}</p>
+                    <p><strong>Email:</strong> ${formatEmail(saa['Email']) || 'N/A'}</p>
                     <p><strong>Address:</strong> ${saa['Address'] || 'N/A'}</p>
                     <div class="map-container" id="map-${index}"></div>
                     <a href="#" class="directions-btn" onclick="openDirections(${index}); return false;">Get Directions</a>
@@ -334,6 +340,11 @@ function preprocessAddress(saa) {
     }
     // Add more corrections as needed
     return saa;
+}
+
+function formatEmail(email) {
+    if (!email) return 'N/A';
+    return email.replace('[at]', '@').replace('[dot]', '.');
 }
 
 // Use this function when processing your data
