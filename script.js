@@ -2,6 +2,7 @@ console.log('Script file loaded');
 
 let saaData = [];
 let pincodeData = [];
+let globalSAAs = [];
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM fully loaded');
@@ -150,6 +151,8 @@ function findSAA() {
 }
 
 function displayResults(saas) {
+    globalSAAs = saas; // Store the SAAs globally
+
     const resultsDiv = document.getElementById('results');
     if (!resultsDiv) {
         console.error('Results div not found');
@@ -160,7 +163,7 @@ function displayResults(saas) {
     if (saas.length === 0) {
         html += '<p>No SAAs found.</p>';
     } else {
-        saas.forEach(saa => {
+        saas.forEach((saa, index) => {
             html += `
                 <div class="result-item">
                     <h3>${saa['District'] || 'N/A'}, ${saa['State'] || 'N/A'}</h3>
@@ -168,10 +171,134 @@ function displayResults(saas) {
                     <p><strong>Phone:</strong> ${saa['Phone No.'] || 'N/A'}</p>
                     <p><strong>Email:</strong> ${saa['Email'] || 'N/A'}</p>
                     <p><strong>Address:</strong> ${saa['Address'] || 'N/A'}</p>
+                    <div id="map-${index}" style="height: 300px; width: 100%;"></div>
+                    <p><a href="#" onclick="openDirections(${index}); return false;">Get Directions</a></p>
                 </div>
             `;
         });
     }
     resultsDiv.innerHTML = html;
+
+    // Initialize maps after HTML is inserted
+    saas.forEach((saa, index) => {
+        const mapElement = document.getElementById(`map-${index}`);
+        if (!mapElement) {
+            console.error(`Map element not found for index ${index}`);
+            return;
+        }
+
+        const map = L.map(mapElement).setView([20.5937, 78.9629], 5); // Default to center of India
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Geocode the address
+        const address = `${saa['Address'] || ''}, ${saa['District'] || ''}, ${saa['State'] || ''}`;
+        geocodeAddress(address, map, saa);
+    });
+
     console.log('Results displayed on page');
+}
+
+function openDirections(index) {
+    const saa = globalSAAs[index];
+    let destination;
+    if (saa.lat && saa.lon) {
+        // Use coordinates if available
+        destination = `${saa.lat},${saa.lon}`;
+    } else {
+        // Fallback to a simplified address
+        destination = `${saa['District'] || ''}, ${saa['State'] || ''}`;
+    }
+    
+    const encodedDestination = encodeURIComponent(destination);
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}`;
+    window.open(url, '_blank');
+}
+
+function geocodeAddress(address, map, saa) {
+    console.log('Geocoding address:', address);
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+                console.log('Geocoding successful:', lat, lon);
+                map.setView([lat, lon], 13);
+                L.marker([lat, lon]).addTo(map)
+                    .bindPopup(address)
+                    .openPopup();
+                
+                // Store the coordinates
+                saa.lat = lat;
+                saa.lon = lon;
+            } else {
+                console.log('Geocoding failed for address:', address);
+                // Fallback: Try geocoding with just district and state
+                const fallbackAddress = `${saa['District'] || ''}, ${saa['State'] || ''}`;
+                geocodeFallback(fallbackAddress, map);
+            }
+        })
+        .catch(error => {
+            console.error('Error during geocoding:', error);
+            // Fallback: Try geocoding with just district and state
+            const fallbackAddress = `${saa['District'] || ''}, ${saa['State'] || ''}`;
+            geocodeFallback(fallbackAddress, map);
+        });
+}
+
+function geocodeFallback(address, map) {
+    console.log('Attempting fallback geocoding for:', address);
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+                console.log('Fallback geocoding successful:', lat, lon);
+                map.setView([lat, lon], 10);
+                L.marker([lat, lon]).addTo(map)
+                    .bindPopup(address)
+                    .openPopup();
+            } else {
+                console.log('Fallback geocoding failed for address:', address);
+                // If all else fails, show the entire state
+                geocodeState(saa['State'], map);
+            }
+        })
+        .catch(error => console.error('Error during fallback geocoding:', error));
+}
+
+function geocodeState(state, map) {
+    console.log('Attempting to geocode state:', state);
+    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(state)}, India`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+                console.log('State geocoding successful:', lat, lon);
+                map.setView([lat, lon], 7);
+                L.marker([lat, lon]).addTo(map)
+                    .bindPopup(state)
+                    .openPopup();
+            } else {
+                console.log('Failed to geocode state:', state);
+            }
+        })
+        .catch(error => console.error('Error during state geocoding:', error));
+}
+
+function initializeMaps(saas) {
+    if (typeof L !== 'undefined') {
+        saas.forEach((saa, index) => {
+            const map = L.map(`map-${index}`).setView([20.5937, 78.9629], 5); // Center of India
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+        });
+    } else {
+        console.error('Leaflet library not loaded');
+    }
 }
