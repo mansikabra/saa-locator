@@ -4,33 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SAA Locator</title>
-    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background: url('adoption-background.jpg') no-repeat center center fixed;
+            background-size: cover;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        #search-form {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        #pincode {
+            padding: 10px;
+            font-size: 16px;
+            width: 200px;
+            border: 1px solid #ddd;
+            border-radius: 5px 0 0 5px;
+        }
+        #search-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+        }
+        #search-button:hover {
+            background-color: #45a049;
+        }
+        .result-item {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+        }
+        .result-item h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .map-container {
+            height: 200px;
+            margin-bottom: 10px;
+        }
+        .directions-btn {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #008CBA;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+        }
+        .directions-btn:hover {
+            background-color: #007B9A;
+        }
+    </style>
 </head>
 <body>
-    <h1>Find Nearest Specialized Adoption Agencies (SAAs)</h1>
-    <div id="loading-indicator">Loading data, please wait...</div>
-    <form id="search-form" onsubmit="return false;">
-        <input type="text" id="pincode" placeholder="Enter your Pin Code">
-        <button type="button" id="search-button">Search</button>
-    </form>
-    <div id="results"></div>
-
+    <div class="container">
+        <h1>Find Nearest Specialized Adoption Agencies (SAAs)</h1>
+        <form id="search-form" onsubmit="return false;">
+            <input type="text" id="pincode" placeholder="Enter your Pin Code">
+            <button type="button" id="search-button">Search</button>
+        </form>
+        <div id="results"></div>
+    </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
-    <script src="script.js"></script>
-
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="script.js"></script>
-    
-    <script>
-    let globalSAAs = [];
-
-    function openDirections(index) {
-        // ... (the function code from above) ...
-    }
-
-    // ... other global functions ...
-    </script>
 </body>
 </html>
